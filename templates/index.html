@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OtakuDailyUpdates — Autonomous AI Blogging Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(18, 25, 41, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #e11d48;
+            --primary-glow: rgba(225, 29, 72, 0.3);
+            --accent: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(225, 29, 72, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .brand h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f43f5e, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0.6rem 1.2rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .slot-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .slot-pill:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .slot-time {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .slot-name {
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .log-box {
+            font-family: 'JetBrains Mono', monospace;
+            background: #04070d;
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            height: 250px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            color: #38bdf8;
+        }
+
+        .log-entry {
+            margin-bottom: 0.4rem;
+            line-height: 1.4;
+        }
+
+        .log-time { color: var(--text-muted); }
+        .log-info { color: #38bdf8; }
+        .log-success { color: #4ade80; }
+        .log-warning { color: #fbbf24; }
+        .log-error { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <h1>OtakuDailyUpdates</h1>
+                <p>Autonomous AI Blogging & Publishing Agent Command Center</p>
+            </div>
+            <div class="status-badge">
+                <div class="dot"></div>
+                <span>AGENT ONLINE & SCHEDULED (8 SLOTS/DAY)</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- 8 Daily Slots Overview -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">📅 8 Daily Publishing Slots Schedule</div>
+                    <button class="btn" onclick="triggerRunSlot('08:00')">Run Slot Now</button>
+                </div>
+                <div class="slots-grid">
+                    <div class="slot-pill" onclick="triggerRunSlot('08:00')">
+                        <div class="slot-time">08:00 AM</div>
+                        <div class="slot-name">Anime News #1</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('10:00')">
+                        <div class="slot-time">10:00 AM</div>
+                        <div class="slot-name">Anime News #2</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('12:00')">
+                        <div class="slot-time">12:00 PM</div>
+                        <div class="slot-name">Anime News #3</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('14:00')">
+                        <div class="slot-time">02:00 PM</div>
+                        <div class="slot-name">Anime News #4</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('16:00')">
+                        <div class="slot-time">04:00 PM</div>
+                        <div class="slot-name">Anime News #5</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('18:00')">
+                        <div class="slot-time">06:00 PM</div>
+                        <div class="slot-name">Episode Review</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('20:00')">
+                        <div class="slot-time">08:00 PM</div>
+                        <div class="slot-name">Anime Theory</div>
+                    </div>
+                    <div class="slot-pill" onclick="triggerRunSlot('22:00')">
+                        <div class="slot-time">10:00 PM</div>
+                        <div class="slot-name">Spotlight</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 Memory Database Stats</div>
+                </div>
+                <div style="font-size: 0.9rem; line-height: 1.8;">
+                    <div>• <strong>Mode:</strong> {{ 'Dry-Run (Simulated)' if dry_run else 'Live WordPress Publishing' }}</div>
+                    <div>• <strong>Total Published Posts:</strong> <span id="stat-posts">{{ posts|length }}</span></div>
+                    <div>• <strong>Tracked Anime Series:</strong> 7 Airing Series</div>
+                    <div>• <strong>Target Word Count:</strong> 1500 - 2500 words</div>
+                    <div>• <strong>Auto Retries:</strong> 3x Retries / 5 Min Backoff</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Published Posts Memory -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <div class="card-title">📚 SQLite Publishing Memory (Zero Duplicates Engine)</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Slot</th>
+                        <th>Article Title</th>
+                        <th>Category</th>
+                        <th>Words</th>
+                        <th>Readability</th>
+                        <th>Published At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="posts-tbody">
+                    {% for p in posts %}
+                    <tr>
+                        <td>#{{ p.id }}</td>
+                        <td><span style="color: var(--accent); font-weight: 600;">{{ p.slot_name }}</span></td>
+                        <td><strong>{{ p.title }}</strong></td>
+                        <td>{{ p.category }}</td>
+                        <td>{{ p.word_count }}</td>
+                        <td>{{ p.readability_score }}</td>
+                        <td>{{ p.published_at[:16].replace('T', ' ') }}</td>
+                        <td><a href="{{ p.url }}" target="_blank" style="color: var(--primary); text-decoration: none;">View Post ↗</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            No articles in memory database yet. Click "Run Slot Now" or wait for scheduled cron.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Social Media Auto-Poster (X / Twitter) Feed -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <div class="card-title">🐦 X (Twitter) Auto-Poster & Draft Memory (No Hashtags)</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Article Title</th>
+                        <th>Generated Tweet (<45 words)</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="social-tbody">
+                    {% for s in social_posts %}
+                    <tr>
+                        <td>#{{ s.id }}</td>
+                        <td><strong>{{ s.article_title }}</strong></td>
+                        <td style="max-width: 400px; font-size: 0.85rem; line-height: 1.4; color: #cbd5e1;">{{ s.x_text }}</td>
+                        <td>
+                            {% if s.x_status == 'published' %}
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">LIVE ON X</span>
+                            {% elif s.x_status == 'draft' %}
+                                <span style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">DRAFT ($0 FREE MODE)</span>
+                            {% else %}
+                                <span style="background: rgba(225, 29, 72, 0.2); color: #e11d48; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">FAILED</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ s.created_at[:16].replace('T', ' ') }}</td>
+                        <td><a href="{{ s.article_url }}" target="_blank" style="color: var(--primary); text-decoration: none;">View Article ↗</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            No X (Twitter) social posts generated yet. Trigger a slot to auto-generate a tweet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Live Terminal Logs -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🖥️ Real-time Execution Logs</div>
+            </div>
+            <div class="log-box" id="log-box">
+                {% for log in logs %}
+                <div class="log-entry">
+                    <span class="log-time">[{{ log.timestamp[11:19] }}]</span>
+                    <span class="log-{{ log.level.lower() }}">[{{ log.level }}]</span>
+                    <span>[{{ log.slot_name }}]</span>
+                    <span>{{ log.message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function triggerRunSlot(slotTime) {
+            fetch('/api/run-slot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slot_key: slotTime })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(`Slot ${slotTime} triggered successfully! Result: ` + JSON.stringify(data));
+                location.reload();
+            })
+            .catch(err => alert('Error running slot: ' + err));
+        }
+
+        // Auto-refresh logs every 10 seconds
+        setInterval(() => {
+            fetch('/api/logs')
+                .then(res => res.json())
+                .then(logs => {
+                    const logBox = document.getElementById('log-box');
+                    logBox.innerHTML = logs.map(log => `
+                        <div class="log-entry">
+                            <span class="log-time">[${log.timestamp.substr(11, 8)}]</span>
+                            <span class="log-${log.level.toLowerCase()}">[${log.level}]</span>
+                            <span>[${log.slot_name}]</span>
+                            <span>${log.message}</span>
+                        </div>
+                    `).join('');
+                });
+        }, 10000);
+    </script>
+</body>
+</html>

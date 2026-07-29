@@ -1,0 +1,9 @@
+.env
+.x_session/
+__pycache__/
+*.pyc
+media_output/*
+!media_output/.gitkeep
+database/*.db
+.vscode/
+.idea/
