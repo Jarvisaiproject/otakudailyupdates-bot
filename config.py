@@ -5,10 +5,10 @@ load_dotenv()
 
 class Config:
     WP_URL = os.getenv("WP_URL", "https://otakudailyupdates.com").rstrip("/")
-    WP_USERNAME = os.getenv("WP_USERNAME", "admin")
+    WP_USERNAME = os.getenv("WP_USER", os.getenv("WP_USERNAME", "otakuwears664@gmail.com"))
     WP_APP_PASSWORD = os.getenv("WP_APP_PASSWORD", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
+    DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
     
     # Twitter / X API Credentials
     ENABLE_X_POSTING = os.getenv("ENABLE_X_POSTING", "true").lower() == "true"
