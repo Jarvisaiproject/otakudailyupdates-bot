@@ -78,7 +78,7 @@ def main():
     parser.add_argument("--run-all-slots", action="store_true", help="Run a full cycle of all 8 daily slots")
     parser.add_argument("--schedule", action="store_true", help="Start background scheduler service")
     parser.add_argument("--serve", action="store_true", help="Start FastAPI web dashboard server")
-    parser.add_argument("--port", type=int, default=8000, help="Web server port (default 8000)")
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", 8000)), help="Web server port (default 8000)")
     parser.add_argument("--dry-run", action="store_true", help="Enforce dry run mode")
 
     args = parser.parse_args()
