@@ -89,17 +89,50 @@ def get_posts():
 def get_social_posts():
     return MemoryDB.get_recent_social_posts(limit=50)
 
+@app.get("/api/wp-history")
+def get_wp_history():
+    """
+    Fetches all live published posts directly from WordPress REST API.
+    """
+    import requests
+    import html
+    try:
+        res = requests.get(f"{config.WP_URL}/wp-json/wp/v2/posts?per_page=100", timeout=12)
+        if res.status_code == 200:
+            raw_posts = res.json()
+            wp_posts = []
+            for p in raw_posts:
+                wp_posts.append({
+                    "id": p.get("id"),
+                    "title": html.unescape(p.get("title", {}).get("rendered", "")),
+                    "link": p.get("link"),
+                    "date": p.get("date", "").replace("T", " "),
+                    "slug": p.get("slug"),
+                    "status": p.get("status")
+                })
+            return {"status": "success", "count": len(wp_posts), "posts": wp_posts}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "posts": []}
+    return {"status": "error", "posts": []}
+
 @app.post("/api/run-slot")
 def trigger_slot_api(req: SlotTriggerRequest):
-    result = controller.run_slot_cycle(req.slot_key)
-    return result
+    try:
+        result = controller.run_slot_cycle(req.slot_key)
+        return JSONResponse(content=result if isinstance(result, dict) else {"status": "success", "data": str(result)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.post("/api/run-cleaner")
 def trigger_cleaner_api():
-    from services.wp_cleaner_agent import WPDuplicateCleanerAgent
-    cleaner = WPDuplicateCleanerAgent()
-    res = cleaner.scan_and_clean_duplicates()
-    return res
+    try:
+        from services.wp_cleaner_agent import WPDuplicateCleanerAgent
+        cleaner = WPDuplicateCleanerAgent()
+        res = cleaner.scan_and_clean_duplicates()
+        return JSONResponse(content=res if isinstance(res, dict) else {"status": "success", "data": str(res)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
 
 
 def main():

@@ -515,6 +515,32 @@
             </table>
         </div>
 
+        <!-- Live WordPress Published History Card -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <div class="card-title">🌐 Live WordPress Published Blog History (Direct from Site REST API)</div>
+                <button class="btn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);" onclick="loadWPHistory()">🔄 Refresh Live Site History</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>WP ID</th>
+                        <th>Live Article Title</th>
+                        <th>Published Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="wp-history-tbody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                            Loading live posts from otakudailyupdates.com...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Live Terminal Logs -->
         <div class="card">
             <div class="card-header">
@@ -599,14 +625,22 @@
         }
 
         function triggerRunSlot(slotTime) {
+            alert(`Slot ${slotTime} triggered! Cycle started in background. Please wait ~30s...`);
             fetch('/api/run-slot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ slot_key: slotTime })
             })
-            .then(res => res.json())
+            .then(async res => {
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch(e) {
+                    return { status: 'completed', text_response: text };
+                }
+            })
             .then(data => {
-                alert(`Slot ${slotTime} triggered successfully! Result: ` + JSON.stringify(data));
+                alert(`Slot ${slotTime} finished! Status: ${data.status || 'success'}`);
                 location.reload();
             })
             .catch(err => alert('Error running slot: ' + err));
@@ -618,7 +652,14 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(res => res.json())
+            .then(async res => {
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch(e) {
+                    return { status: 'completed', text_response: text };
+                }
+            })
             .then(data => {
                 alert(`WP Duplicate Cleaner Agent finished! Scanned: ${data.scanned || 0}, Deleted: ${data.deleted || 0}`);
                 location.reload();
@@ -626,6 +667,32 @@
             .catch(err => alert('Cleaner Agent Error: ' + err));
         }
 
+        function loadWPHistory() {
+            const tbody = document.getElementById('wp-history-tbody');
+            fetch('/api/wp-history')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.posts && data.posts.length > 0) {
+                        tbody.innerHTML = data.posts.map(p => `
+                            <tr>
+                                <td>#${p.id}</td>
+                                <td><strong>${p.title}</strong></td>
+                                <td>${p.date}</td>
+                                <td><span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">LIVE ON SITE</span></td>
+                                <td><a href="${p.link}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Blog ↗</a></td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No published posts found on WordPress site.</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 1.5rem;">Failed loading WP history: ${err}</td></tr>`;
+                });
+        }
+
+        // Initial load of WP History
+        loadWPHistory();
 
         // Auto-refresh logs every 10 seconds
         setInterval(() => {
@@ -646,4 +713,5 @@
     </script>
 </body>
 </html>
+
 
