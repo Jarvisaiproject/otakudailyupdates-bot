@@ -1,7 +1,9 @@
 import requests
 from typing import Dict, Any, Optional, List
+from config import config
 from database.memory import MemoryDB
 from datetime import datetime
+
 
 class EpisodeTracker:
     """
