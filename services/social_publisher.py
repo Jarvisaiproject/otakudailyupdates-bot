@@ -47,14 +47,19 @@ CRITICAL RULES:
 """
         text = ""
         if self.client:
-            try:
-                res = self.client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-                text = res.text or ""
-            except Exception as e:
-                MemoryDB.log_event("WARNING", "SocialPublisher", f"Gemini text gen failed: {e}")
+            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+            for model_name in models_to_try:
+                try:
+                    res = self.client.models.generate_content(
+                        model=model_name,
+                        contents=prompt
+                    )
+                    if res and res.text:
+                        text = res.text
+                        break
+                except Exception as e:
+                    MemoryDB.log_event("WARNING", "SocialPublisher", f"Gemini model {model_name} failed: {e}. Retrying next model...")
+
 
         if not text:
             text = f"Check out the latest updates on {title}! Read the full story on {config.SITE_NAME}."

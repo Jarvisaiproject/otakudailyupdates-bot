@@ -36,15 +36,19 @@ class ContentWriter:
 
         raw_content = ""
         if self.client and self.api_key:
-            try:
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-                raw_content = response.text or ""
-            except Exception as e:
-                MemoryDB.log_event("WARNING", slot_info.get("name", ""), f"Gemini API call failed: {str(e)}. Using fallback synthesis engine.")
-                raw_content = ""
+            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+            for model_name in models_to_try:
+                try:
+                    response = self.client.models.generate_content(
+                        model=model_name,
+                        contents=prompt
+                    )
+                    if response and response.text:
+                        raw_content = response.text
+                        break
+                except Exception as e:
+                    MemoryDB.log_event("WARNING", slot_info.get("name", ""), f"Gemini model {model_name} failed: {str(e)}. Retrying next model...")
+
 
         if not raw_content or len(re.findall(r'\w+', raw_content)) < 400:
             raw_content = self._fallback_synthesis(title, slot_type, topic, seo_meta)

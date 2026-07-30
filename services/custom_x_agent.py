@@ -56,8 +56,7 @@ STRICT RULES:
 - Output ONLY the text body. Do not output the URL (the link is added automatically).
 """
         text = ""
-        if self.client:
-            models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
             for model_name in models_to_try:
                 try:
                     res = self.client.models.generate_content(
