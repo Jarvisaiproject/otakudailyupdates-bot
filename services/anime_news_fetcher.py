@@ -48,20 +48,30 @@ class AnimeNewsFetcher:
     def get_unseen_trending_topic(self, subtype: str = "breaking") -> Dict[str, Any]:
         """
         Returns a verified, unseen anime news topic.
-        If live feeds fail or return already processed news, uses high-value trending otaku topics.
+        Checks both local database AND live WordPress site to guarantee 0 duplicates.
         """
+        from services.wordpress_publisher import WordPressPublisher
+        wp_publisher = WordPressPublisher()
+
         fetched = self.fetch_all_news()
         for item in fetched:
-            if not MemoryDB.is_news_processed(item["news_hash"]):
-                MemoryDB.cache_news(item["news_hash"], item["title"], item["source"], item["link"])
-                return {
-                    "title": item["title"],
-                    "summary": item["summary"],
-                    "source": item["source"],
-                    "url": item["link"],
-                    "subtype": subtype,
-                    "is_verified": True
-                }
+            # Check 1: Local SQLite Memory
+            if MemoryDB.is_news_processed(item["news_hash"]):
+                continue
+            # Check 2: Live WordPress API Search
+            if wp_publisher.is_published_on_wp(item["title"]):
+                MemoryDB.log_event("WARNING", "News Fetcher", f"Topic '{item['title'][:40]}...' already exists on WordPress. Skipping.")
+                continue
+
+            MemoryDB.cache_news(item["news_hash"], item["title"], item["source"], item["link"])
+            return {
+                "title": item["title"],
+                "summary": item["summary"],
+                "source": item["source"],
+                "url": item["link"],
+                "subtype": subtype,
+                "is_verified": True
+            }
 
         # Fallback dynamic curated news topics based on current anime landscape
         fallback_topics = [
@@ -99,7 +109,7 @@ class AnimeNewsFetcher:
 
         for fb in fallback_topics:
             fb_hash = hashlib.md5(fb["title"].encode("utf-8")).hexdigest()
-            if not MemoryDB.is_news_processed(fb_hash):
+            if not MemoryDB.is_news_processed(fb_hash) and not wp_publisher.is_published_on_wp(fb["title"]):
                 MemoryDB.cache_news(fb_hash, fb["title"], fb["source"], fb["url"])
                 return {
                     "title": fb["title"],
@@ -109,6 +119,7 @@ class AnimeNewsFetcher:
                     "subtype": subtype,
                     "is_verified": True
                 }
+
 
         # If all hash checks pass, construct a dynamic micro-topic to ensure 100% uniqueness
         import time

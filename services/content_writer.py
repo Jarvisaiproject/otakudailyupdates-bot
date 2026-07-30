@@ -36,7 +36,7 @@ class ContentWriter:
 
         raw_content = ""
         if self.client and self.api_key:
-            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+            models_to_try = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
             for model_name in models_to_try:
                 try:
                     response = self.client.models.generate_content(

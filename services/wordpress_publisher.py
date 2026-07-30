@@ -189,3 +189,40 @@ class WordPressPublisher:
             except Exception:
                 pass
         return tag_ids
+
+    def is_published_on_wp(self, title: str) -> bool:
+        """
+        Queries WordPress REST API to check if a post with a similar title or topic is already published.
+        """
+        try:
+            import urllib.parse
+            import html
+            from difflib import SequenceMatcher
+
+            clean_title = title.strip().lower()
+            search_query = urllib.parse.quote(clean_title[:30])
+
+            res = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?search={search_query}&per_page=15", headers=self.headers, timeout=8)
+            if res.status_code == 200:
+                posts = res.json()
+                for p in posts:
+                    wp_title = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
+
+                    ratio = SequenceMatcher(None, clean_title, wp_title).ratio()
+                    if ratio > 0.55:
+                        return True
+
+            res2 = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?per_page=25", headers=self.headers, timeout=8)
+            if res2.status_code == 200:
+                posts2 = res2.json()
+                for p in posts2:
+                    wp_title = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
+                    ratio = SequenceMatcher(None, clean_title, wp_title).ratio()
+                    if ratio > 0.55:
+                        return True
+
+        except Exception as e:
+            MemoryDB.log_event("WARNING", "WP Duplicate Check", f"Failed WP live check: {e}")
+        return False
+
+
