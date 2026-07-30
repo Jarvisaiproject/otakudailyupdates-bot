@@ -205,18 +205,165 @@
         .log-success { color: #4ade80; }
         .log-warning { color: #fbbf24; }
         .log-error { color: #f87171; }
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(4, 7, 13, 0.92);
+            backdrop-filter: blur(16px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .auth-card h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #f43f5e, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.8rem;
+        }
+
+        .google-btn {
+            width: 100%;
+            background: white;
+            color: #0f172a;
+            border: none;
+            padding: 0.85rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 1.2rem;
+        }
+
+        .google-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            margin: 1.2rem 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .auth-divider span {
+            padding: 0 0.8rem;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            padding: 0.85rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 0.85rem;
+            outline: none;
+        }
+
+        .auth-input:focus {
+            border-color: var(--accent);
+        }
+
+        .user-profile {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0.4rem 1rem;
+            border-radius: 9999px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
     </style>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 </head>
 <body>
+    <!-- Firebase Authentication Overlay Modal -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <h2>OtakuDailyUpdates</h2>
+            <p>Sign in to access your Autonomous AI Blogging Command Center</p>
+
+            <button class="google-btn" onclick="loginWithGoogle()">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                Sign in with Google
+            </button>
+
+            <div class="auth-divider"><span>OR EMAIL SIGN IN</span></div>
+
+            <input type="email" id="auth-email" class="auth-input" placeholder="Email Address">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                <button class="btn" style="flex: 1;" onclick="loginWithEmail()">Log In</button>
+                <button class="btn" style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #6d28d9);" onclick="signUpWithEmail()">Sign Up</button>
+            </div>
+            <div id="auth-error" style="color: #f87171; font-size: 0.85rem; margin-top: 1rem;"></div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="brand">
                 <h1>OtakuDailyUpdates</h1>
                 <p>Autonomous AI Blogging & Publishing Agent Command Center</p>
             </div>
-            <div class="status-badge">
-                <div class="dot"></div>
-                <span>AGENT ONLINE & SCHEDULED (8 SLOTS/DAY)</span>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="status-badge">
+                    <div class="dot"></div>
+                    <span>AGENT ONLINE & SCHEDULED (8 SLOTS/DAY)</span>
+                </div>
+                <div id="user-profile" class="user-profile">
+                    <img id="user-photo" class="user-avatar" src="" alt="User Avatar">
+                    <span id="user-name" style="font-size: 0.85rem; font-weight: 600;"></span>
+                    <button onclick="logoutFirebase()" style="background: none; border: none; color: var(--primary); cursor: pointer; font-weight: 700; font-size: 0.8rem; margin-left: 0.5rem;">Logout</button>
+                </div>
             </div>
         </header>
 
@@ -383,6 +530,70 @@
     </div>
 
     <script>
+        // User's Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB54nvSt6YPFL7HLqj-2Kj8N5Yj3TW8j0k",
+            authDomain: "daily-schedule-11.firebaseapp.com",
+            projectId: "daily-schedule-11",
+            storageBucket: "daily-schedule-11.firebasestorage.app",
+            messagingSenderId: "249910992525",
+            appId: "1:249910992525:web:541377230522d724d98cc4",
+            measurementId: "G-1C9JG4THV9"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Listen for Auth State Changes
+        auth.onAuthStateChanged(user => {
+            const overlay = document.getElementById('auth-overlay');
+            const profile = document.getElementById('user-profile');
+            const userName = document.getElementById('user-name');
+            const userPhoto = document.getElementById('user-photo');
+
+            if (user) {
+                overlay.style.display = 'none';
+                profile.style.display = 'flex';
+                userName.textContent = user.displayName || user.email;
+                userPhoto.src = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email)}&background=e11d48&color=fff`;
+            } else {
+                overlay.style.display = 'flex';
+                profile.style.display = 'none';
+            }
+        });
+
+        // Google Sign-In
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                document.getElementById('auth-error').textContent = err.message;
+            });
+        }
+
+        // Email Login
+        function loginWithEmail() {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-password').value;
+            auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                document.getElementById('auth-error').textContent = err.message;
+            });
+        }
+
+        // Email Sign Up
+        function signUpWithEmail() {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-password').value;
+            auth.createUserWithEmailAndPassword(email, pass).catch(err => {
+                document.getElementById('auth-error').textContent = err.message;
+            });
+        }
+
+        // Logout
+        function logoutFirebase() {
+            auth.signOut();
+        }
+
         function triggerRunSlot(slotTime) {
             fetch('/api/run-slot', {
                 method: 'POST',
@@ -416,3 +627,4 @@
     </script>
 </body>
 </html>
+
