@@ -9,30 +9,34 @@ from config import config
 
 class MediaGenerator:
     """
-    Handles AI featured image generation, Pillow image optimization/compression to 16:9 WebP,
-    and ALT text generation.
+    Searches the internet for real topic-relevant anime images, 
+    optimizes/compresses them using Pillow to 16:9 WebP format, 
+    and generates SEO ALT text.
     """
 
     def __init__(self):
         self.output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "media_output")
         os.makedirs(self.output_dir, exist_ok=True)
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
 
     def generate_and_optimize_featured_image(self, title: str, slug: str, slot_type: str) -> Dict[str, Any]:
         """
-        Generates a 16:9 high quality image, compresses it to WebP, and prepares metadata.
+        Searches the internet for a photo matching the blog topic,
+        downloads and converts it to a 16:9 WebP featured image.
         """
-        alt_text = f"Featured illustration for {title} - {config.SITE_NAME}"
-        image_title = f"{title} Featured Graphic"
-        caption = f"Official featured media coverage for {title} on {config.SITE_NAME}."
+        alt_text = f"Official photo for {title} - {config.SITE_NAME}"
+        image_title = f"{title} Featured Image"
+        caption = f"Official topic photo coverage for {title} on {config.SITE_NAME}."
 
-        prompt_keywords = re.sub(r'[^a-zA-Z0-9\s]', '', title)
-        prompt = f"anime style high quality 16:9 cinematic artwork of {prompt_keywords}, trending on artstation, vivid colors, highly detailed"
+        print(f"[*] Searching the web for real image for topic: '{title}'...")
+        image_bytes, source_used = self._search_web_image(title, slot_type)
 
-        image_bytes = self._fetch_ai_image(prompt)
-        
         if not image_bytes:
-            # Fallback to local Pillow graphic canvas generation
+            print("[!] Web search failed, generating fallback graphic canvas...")
             image_bytes = self._create_fallback_graphic(title, slot_type)
+            source_used = "Fallback Canvas"
 
         # Compress & Optimize using Pillow to 16:9 WebP (1280x720)
         optimized_filepath, filesize = self._optimize_to_webp(image_bytes, slug)
@@ -44,24 +48,103 @@ class MediaGenerator:
             "alt_text": alt_text,
             "image_title": image_title,
             "caption": caption,
-            "prompt": prompt
+            "prompt": f"Web image search for '{title}' via {source_used}"
         }
 
-    def _fetch_ai_image(self, prompt: str) -> Any:
+    def _clean_title_keywords(self, title: str) -> str:
+        """Extract core subject from headline for better image search results."""
+        cleaned = re.sub(r'(?i)(reveals?|announced?|teaser|trailer|official|release|date|details|season \d+|chapter \d+|episode \d+|revisiting|review|spotlight|analysis|manga|anime|main trailer|cast pair|theme song|staff|first look|key visual)', '', title)
+        cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', cleaned)
+        cleaned = ' '.join(cleaned.split())
+        return cleaned if len(cleaned) >= 3 else title
+
+    def _search_web_image(self, title: str, slot_type: str) -> Tuple[Optional[bytes], str]:
+        """
+        Searches Kitsu Anime Database, MyAnimeList (Jikan API), and Bing Images
+        for real web photos matching the blog topic.
+        """
+        keywords = self._clean_title_keywords(title)
+
+        # 1. Try Kitsu Official Anime Database (100% official cover/poster artwork)
         try:
-            encoded_prompt = urllib.parse.quote(prompt)
-            # Pollinations AI image endpoint (free high quality 16:9 generation)
+            url = f"https://kitsu.io/api/edge/anime?filter[text]={urllib.parse.quote(keywords)}&page[limit]=1"
+            r = requests.get(url, headers=self.headers, timeout=6)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("data"):
+                    attr = data["data"][0]["attributes"]
+                    cover_url = None
+                    if attr.get("coverImage") and attr["coverImage"].get("large"):
+                        cover_url = attr["coverImage"]["large"]
+                    elif attr.get("posterImage") and attr["posterImage"].get("large"):
+                        cover_url = attr["posterImage"]["large"]
+                    
+                    if cover_url:
+                        img_bytes = self._download_image(cover_url)
+                        if img_bytes:
+                            return img_bytes, f"Kitsu Official Database ({cover_url})"
+        except Exception as e:
+            print(f"[!] Kitsu image search error: {e}")
+
+        # 2. Try MyAnimeList (Jikan API)
+        try:
+            url = f"https://api.jikan.moe/v4/anime?q={urllib.parse.quote(keywords)}&limit=1"
+            r = requests.get(url, headers=self.headers, timeout=6)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("data"):
+                    mal_img = data["data"][0]["images"]["jpg"]["large_image_url"]
+                    img_bytes = self._download_image(mal_img)
+                    if img_bytes:
+                        return img_bytes, f"MyAnimeList ({mal_img})"
+        except Exception as e:
+            print(f"[!] Jikan image search error: {e}")
+
+        # 3. Try Bing Image Search with strict anime filters
+        try:
+            bing_query = f"{keywords} anime key visual wallpaper"
+            url = f"https://www.bing.com/images/search?q={urllib.parse.quote(bing_query)}&form=HDRSC2&first=1"
+            r = requests.get(url, headers=self.headers, timeout=6)
+            if r.status_code == 200:
+                murls = re.findall(r'murl&quot;:&quot;(https?://[^&]+)&quot;', r.text)
+                for img_url in murls[:8]:
+                    if any(domain in img_url.lower() for domain in ['anime', 'manga', 'crunchyroll', 'fandom', 'static', 'media', 'wp-content', 'cdn', 'image']):
+                        if any(img_url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                            img_bytes = self._download_image(img_url)
+                            if img_bytes:
+                                return img_bytes, f"Bing Web Search ({img_url})"
+        except Exception as e:
+            print(f"[!] Bing image search error: {e}")
+
+        # 4. Try Pollinations AI as final online fallback
+        try:
+            encoded_prompt = urllib.parse.quote(f"anime style {keywords}")
             url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1280&height=720&nologo=true&seed=42"
-            response = requests.get(url, timeout=12)
-            if response.status_code == 200 and len(response.content) > 5000:
-                return response.content
+            res = requests.get(url, timeout=8)
+            if res.status_code == 200 and len(res.content) > 5000:
+                return res.content, "AI Online Fallback"
+        except Exception:
+            pass
+
+        return None, "None"
+
+
+    def _download_image(self, url: str) -> Optional[bytes]:
+        try:
+            res = requests.get(url, headers=self.headers, timeout=8)
+            if res.status_code == 200 and len(res.content) > 10000:
+                # Test opening with PIL to verify valid high-res image
+                test_img = Image.open(io.BytesIO(res.content))
+                w, h = test_img.size
+                if w >= 400 and h >= 300:
+                    return res.content
         except Exception:
             pass
         return None
 
+
     def _create_fallback_graphic(self, title: str, slot_type: str) -> bytes:
         width, height = 1280, 720
-        # Color palette depending on slot
         if slot_type == "episode_review":
             bg_color = (20, 24, 40)
             accent_color = (255, 107, 107)
@@ -74,15 +157,10 @@ class MediaGenerator:
 
         img = Image.new("RGB", (width, height), color=bg_color)
         draw = ImageDraw.Draw(img)
-
-        # Decorative gradients/shapes
         draw.rectangle([0, 0, width, 12], fill=accent_color)
         draw.rectangle([0, height - 12, width, height], fill=accent_color)
-        
-        # Center badge
         draw.rectangle([60, 60, width - 60, height - 60], outline=accent_color, width=3)
 
-        # Text banner
         try:
             font = ImageFont.load_default()
         except Exception:
@@ -104,8 +182,8 @@ class MediaGenerator:
         output_filename = f"{slug}-featured.webp"
         output_path = os.path.join(self.output_dir, output_filename)
         
-        # Save as WebP with 85% compression quality
         img.save(output_path, "WEBP", quality=85, method=6)
         filesize = os.path.getsize(output_path)
         
         return output_path, filesize
+
