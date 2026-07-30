@@ -82,11 +82,19 @@ class ContentWriter:
     def markdown_to_clean_html(self, text: str) -> str:
         """
         Converts Markdown syntax into clean, standard HTML for WordPress REST API.
-        Eliminates literal '#', '##', and '**' text artifacts.
+        Renders real Markdown tables into responsive HTML <table> and strips ASCII boxes/trees.
         """
+        # Clean ASCII border boxes (+-----+), ASCII tree markers (└—, ▼, |—)
+        text = re.sub(r'^\+[=+\-]+\+$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^[|│]\s*└[—\-]+', '- ', text, flags=re.MULTILINE)
+        text = re.sub(r'^[|│]\s*▼', '', text, flags=re.MULTILINE)
+        text = re.sub(r'^[|│]\s*—+', '', text, flags=re.MULTILINE)
+        
         lines = text.strip().split('\n')
         html_lines = []
         in_list = False
+        in_table = False
+        table_rows = []
 
         for line in lines:
             line_str = line.strip()
@@ -95,7 +103,28 @@ class ContentWriter:
                 if in_list:
                     html_lines.append("</ul>")
                     in_list = False
+                if in_table:
+                    html_lines.append(self._render_html_table(table_rows))
+                    table_rows = []
+                    in_table = False
                 continue
+
+            # Markdown Table Row Detection (| col1 | col2 |)
+            if line_str.startswith("|") and line_str.endswith("|"):
+                # Skip markdown header separator row (|---|---|)
+                if re.match(r'^\|[\s:-]+(\|\s*[\s:-]+\s*)+\|$', line_str):
+                    continue
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                in_table = True
+                cells = [c.strip() for c in line_str.strip('|').split('|')]
+                table_rows.append(cells)
+                continue
+            elif in_table:
+                html_lines.append(self._render_html_table(table_rows))
+                table_rows = []
+                in_table = False
 
             # Strip out top-level H1 tags as WP renders post title automatically as H1
             if line_str.startswith("# "):
@@ -106,7 +135,7 @@ class ContentWriter:
                 if in_list:
                     html_lines.append("</ul>")
                     in_list = False
-                h_text = line_str[3:].strip()
+                h_text = line_str[3:].strip().strip('|').strip('+')
                 h_text = self._format_inline_html(h_text)
                 html_lines.append(f"<h2>{h_text}</h2>")
                 continue
@@ -116,13 +145,13 @@ class ContentWriter:
                 if in_list:
                     html_lines.append("</ul>")
                     in_list = False
-                h_text = line_str[4:].strip()
+                h_text = line_str[4:].strip().strip('|').strip('+')
                 h_text = self._format_inline_html(h_text)
                 html_lines.append(f"<h3>{h_text}</h3>")
                 continue
 
             # Bullet List Items
-            if line_str.startswith("- ") or line_str.startswith("* "):
+            if line_str.startswith("- ") or line_str.startswith("* ") or line_str.startswith("• "):
                 if not in_list:
                     html_lines.append("<ul>")
                     in_list = True
@@ -147,13 +176,38 @@ class ContentWriter:
                 html_lines.append("</ul>")
                 in_list = False
 
-            p_text = self._format_inline_html(line_str)
-            html_lines.append(f"<p>{p_text}</p>")
+            # Clean residual leading/trailing pipe characters from ASCII boxes
+            p_text = line_str.strip('|').strip('+').strip()
+            p_text = self._format_inline_html(p_text)
+            if p_text:
+                html_lines.append(f"<p>{p_text}</p>")
 
         if in_list:
             html_lines.append("</ul>")
+        if in_table and table_rows:
+            html_lines.append(self._render_html_table(table_rows))
 
         return "\n\n".join(html_lines)
+
+    def _render_html_table(self, rows: list) -> str:
+        if not rows:
+            return ""
+        html = ['<div style="overflow-x:auto; margin: 1.5rem 0;"><table style="width:100%; border-collapse:collapse; font-size:0.95rem; border:1px solid #e2e8f0;">']
+        # Header row
+        header = rows[0]
+        html.append('<thead style="background:#f8fafc; color:#0f172a; font-weight:700;"><tr>')
+        for c in header:
+            html.append(f'<th style="padding:0.75rem 1rem; border:1px solid #cbd5e1; text-align:left;">{self._format_inline_html(c)}</th>')
+        html.append('</tr></thead><tbody>')
+        
+        # Body rows
+        for r in rows[1:]:
+            html.append('<tr>')
+            for c in r:
+                html.append(f'<td style="padding:0.75rem 1rem; border:1px solid #e2e8f0;">{self._format_inline_html(c)}</td>')
+            html.append('</tr>')
+        html.append('</tbody></table></div>')
+        return "".join(html)
 
     def _format_inline_html(self, text: str) -> str:
         # Convert **bold** to <strong>bold</strong>
@@ -196,13 +250,16 @@ REQUIRED ARTICLE STRUCTURE (Write rich text for every single header):
 ## Final Verdict & Future Outlook
 (Write 150+ words wrapping up the article with expectations for future episodes/chapters.)
 
-SEO & STYLE INSTRUCTIONS:
+FORMATTING & STYLING RULES:
 - Primary Keyword: {seo_meta.get('primary_keyword')}
 - Secondary Keywords: {', '.join(seo_meta.get('secondary_keywords', []))}
 - Active, energetic tone suited for anime enthusiasts.
+- DO NOT use ASCII art, ASCII boxes (+---+ or |), or ASCII tree drawings (└—, ▼).
+- Present key information using clean Markdown bullet points (`- Item`) or standard Markdown tables (`| Header 1 | Header 2 |`).
 - DO NOT use AI clichés like "delve into", "tapestry", "testament to", "realm of", "in conclusion".
 - Use Markdown formatting: `##` for section titles, `###` for sub-sections, `- ` for bullet points.
 """
+
 
     def _generate_lore_expansion(self, title: str, seo_meta: Dict[str, Any]) -> str:
         primary_kw = seo_meta.get("primary_keyword", "Anime")
