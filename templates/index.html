@@ -372,8 +372,12 @@
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
                     <div class="card-title">📅 8 Daily Publishing Slots Schedule</div>
-                    <button class="btn" onclick="triggerRunSlot('08:00')">Run Slot Now</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" style="background: linear-gradient(135deg, #059669, #10b981);" onclick="triggerRunCleaner()">🧹 Clean Duplicates Now</button>
+                        <button class="btn" onclick="triggerRunSlot('08:00')">Run Slot Now</button>
+                    </div>
                 </div>
+
                 <div class="slots-grid">
                     <div class="slot-pill" onclick="triggerRunSlot('08:00')">
                         <div class="slot-time">08:00 AM</div>
@@ -607,6 +611,21 @@
             })
             .catch(err => alert('Error running slot: ' + err));
         }
+
+        function triggerRunCleaner() {
+            if (!confirm("Are you sure you want to run the WordPress Duplicate Cleaner Agent right now?")) return;
+            fetch('/api/run-cleaner', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(`WP Duplicate Cleaner Agent finished! Scanned: ${data.scanned || 0}, Deleted: ${data.deleted || 0}`);
+                location.reload();
+            })
+            .catch(err => alert('Cleaner Agent Error: ' + err));
+        }
+
 
         // Auto-refresh logs every 10 seconds
         setInterval(() => {

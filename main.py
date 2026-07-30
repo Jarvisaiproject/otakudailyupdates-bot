@@ -72,6 +72,14 @@ def trigger_slot_api(req: SlotTriggerRequest):
     result = controller.run_slot_cycle(req.slot_key)
     return result
 
+@app.post("/api/run-cleaner")
+def trigger_cleaner_api():
+    from services.wp_cleaner_agent import WPDuplicateCleanerAgent
+    cleaner = WPDuplicateCleanerAgent()
+    res = cleaner.scan_and_clean_duplicates()
+    return res
+
+
 def main():
     parser = argparse.ArgumentParser(description="OtakuDailyUpdates Autonomous AI Blogging Agent")
     parser.add_argument("--run-slot", type=str, help="Run a specific slot by time key (e.g. 08:00, 18:00, 20:00)")
