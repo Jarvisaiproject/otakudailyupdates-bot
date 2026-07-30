@@ -53,16 +53,27 @@ class AutonomousAgentController:
         else: # News Slots 1 to 5
             topic = self.news_fetcher.get_unseen_trending_topic(subtype=slot_info.get("subtype", "news"))
 
-        title = topic["title"]
+        # Step 2: Live WordPress Site Duplicate Check
+        if self.publisher.is_published_on_wp(title):
+            MemoryDB.log_event("WARNING", slot_name, f"Topic '{title[:40]}...' is already published on live WordPress site. Aborting to prevent duplicate.")
+            return {
+                "status": "skipped",
+                "reason": "duplicate_on_wp",
+                "message": f"Topic '{title}' is already published on site."
+            }
 
-        # Step 2: SEO Strategy
+        # Step 3: SEO Strategy
         seo_meta = self.seo_strategist.analyze_and_plan(title, slot_type, topic.get("summary", ""))
 
-        # Check duplicate
+        # Secondary Local Memory Check
         if MemoryDB.is_title_or_slug_duplicate(title, seo_meta["slug"]):
-            MemoryDB.log_event("WARNING", slot_name, f"Prevented duplicate topic execution for '{title}'")
-            # Append timestamp to guarantee uniqueness
-            seo_meta["slug"] = f"{seo_meta['slug']}-{int(datetime.now().timestamp()) % 10000}"
+            MemoryDB.log_event("WARNING", slot_name, f"Topic '{title[:40]}...' exists in SQLite memory. Aborting.")
+            return {
+                "status": "skipped",
+                "reason": "duplicate_in_memory",
+                "message": f"Topic '{title}' exists in SQLite memory."
+            }
+
 
         # Step 3: Write Article Content
         written = self.writer.generate_article(topic, seo_meta, slot_info)

@@ -22,35 +22,55 @@ class EpisodeTracker:
 
     def get_next_episode_for_review(self) -> Dict[str, Any]:
         """
-        Determines the next episode due for review based on SQLite DB tracking memory.
+        Determines the next episode due for review based on SQLite DB tracking memory
+        AND live WordPress REST API checks to ensure zero duplicate reviews.
         """
+        from services.wordpress_publisher import WordPressPublisher
+        wp_pub = WordPressPublisher()
+
         for series in self.TRACKED_SERIES:
             name = series["name"]
             season = series["season"]
             
-            # Check what's the latest reviewed episode in DB
+            # Check latest reviewed episode in DB
             latest_reviewed = MemoryDB.get_latest_reviewed_episode(name, season)
-            next_episode = latest_reviewed + 1
+            next_episode = max(1, latest_reviewed + 1)
             
-            if next_episode <= series["total_episodes"]:
+            while next_episode <= series["total_episodes"]:
+                ep_title = f"{name} Season {season} Episode {next_episode} Review"
+                
+                # Check if this exact episode review is already on live WordPress site
+                if wp_pub.is_published_on_wp(ep_title):
+                    MemoryDB.log_event("INFO", "EpisodeTracker", f"Episode '{ep_title}' already published on WP. Advancing to next episode.")
+                    # Record in local DB so next loop knows
+                    MemoryDB.update_episode_status(name, season, next_episode, "published", f"{config.WP_URL}/review", 9.0)
+                    next_episode += 1
+                    continue
+
                 return {
                     "is_fallback": False,
                     "anime_name": name,
                     "season_number": season,
                     "episode_number": next_episode,
-                    "title": f"{name} Season {season} Episode {next_episode} Review",
+                    "title": ep_title,
                     "air_date": datetime.now().strftime("%Y-%m-%d")
                 }
                 
         # Fallback to Seasonal Review if all episode queues are caught up
+        fallback_title = "Top 10 Must-Watch Currently Airing Anime Series Review & Mid-Season Ranking"
+        if wp_pub.is_published_on_wp(fallback_title):
+            import time
+            fallback_title = f"Seasonal Otaku Breakdown: Complete Anime Mid-Season Review #{str(int(time.time()))[-4:]}"
+
         return {
             "is_fallback": True,
             "anime_name": "Best Currently Airing Anime of the Season",
             "season_number": 1,
             "episode_number": 0,
-            "title": "Top 10 Must-Watch Currently Airing Anime Series Review & Mid-Season Ranking",
+            "title": fallback_title,
             "air_date": datetime.now().strftime("%Y-%m-%d")
         }
+
 
     def record_completed_review(self, anime_name: str, season: int, episode: int, review_url: str, rating: float):
         MemoryDB.update_episode_status(
