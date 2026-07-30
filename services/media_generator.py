@@ -100,29 +100,29 @@ class MediaGenerator:
         except Exception as e:
             print(f"[!] Jikan image search error: {e}")
 
-        # 3. Try Bing Image Search with strict anime filters
+        # 3. Try Bing Image Search for 4K Ultra HD wallpapers & visuals
         try:
-            bing_query = f"{keywords} anime key visual wallpaper"
+            bing_query = f"{keywords} anime 4k wallpaper key visual"
             url = f"https://www.bing.com/images/search?q={urllib.parse.quote(bing_query)}&form=HDRSC2&first=1"
             r = requests.get(url, headers=self.headers, timeout=6)
             if r.status_code == 200:
                 murls = re.findall(r'murl&quot;:&quot;(https?://[^&]+)&quot;', r.text)
                 for img_url in murls[:8]:
-                    if any(domain in img_url.lower() for domain in ['anime', 'manga', 'crunchyroll', 'fandom', 'static', 'media', 'wp-content', 'cdn', 'image']):
+                    if any(domain in img_url.lower() for domain in ['anime', 'manga', 'crunchyroll', 'fandom', 'static', 'media', 'wp-content', 'cdn', 'image', 'wallpaper']):
                         if any(img_url.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
                             img_bytes = self._download_image(img_url)
                             if img_bytes:
-                                return img_bytes, f"Bing Web Search ({img_url})"
+                                return img_bytes, f"Bing 4K Search ({img_url})"
         except Exception as e:
             print(f"[!] Bing image search error: {e}")
 
-        # 4. Try Pollinations AI as final online fallback
+        # 4. Try Pollinations AI 4K as final online fallback
         try:
-            encoded_prompt = urllib.parse.quote(f"anime style {keywords}")
-            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1280&height=720&nologo=true&seed=42"
+            encoded_prompt = urllib.parse.quote(f"anime 4k ultra hd wallpaper of {keywords}")
+            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=3840&height=2160&nologo=true&seed=42"
             res = requests.get(url, timeout=8)
             if res.status_code == 200 and len(res.content) > 5000:
-                return res.content, "AI Online Fallback"
+                return res.content, "AI 4K Online Fallback"
         except Exception:
             pass
 
@@ -144,7 +144,7 @@ class MediaGenerator:
 
 
     def _create_fallback_graphic(self, title: str, slot_type: str) -> bytes:
-        width, height = 1280, 720
+        width, height = 3840, 2160
         if slot_type == "episode_review":
             bg_color = (20, 24, 40)
             accent_color = (255, 107, 107)
@@ -157,9 +157,9 @@ class MediaGenerator:
 
         img = Image.new("RGB", (width, height), color=bg_color)
         draw = ImageDraw.Draw(img)
-        draw.rectangle([0, 0, width, 12], fill=accent_color)
-        draw.rectangle([0, height - 12, width, height], fill=accent_color)
-        draw.rectangle([60, 60, width - 60, height - 60], outline=accent_color, width=3)
+        draw.rectangle([0, 0, width, 36], fill=accent_color)
+        draw.rectangle([0, height - 36, width, height], fill=accent_color)
+        draw.rectangle([180, 180, width - 180, height - 180], outline=accent_color, width=9)
 
         try:
             font = ImageFont.load_default()
@@ -167,23 +167,28 @@ class MediaGenerator:
             font = None
 
         text_snippet = (title[:55] + "...") if len(title) > 55 else title
-        draw.text((100, 320), text_snippet, fill=(255, 255, 255), font=font)
-        draw.text((100, 380), f"OTAKU DAILY UPDATES | {slot_type.upper().replace('_', ' ')}", fill=accent_color, font=font)
+        draw.text((300, 960), text_snippet, fill=(255, 255, 255), font=font)
+        draw.text((300, 1140), f"OTAKU DAILY UPDATES | {slot_type.upper().replace('_', ' ')}", fill=accent_color, font=font)
 
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=90)
+        img.save(buffer, format="JPEG", quality=95)
         return buffer.getvalue()
 
     def _optimize_to_webp(self, image_bytes: bytes, slug: str) -> Tuple[str, int]:
+        """
+        Converts and resizes web image to 4K Ultra HD (3840x2160) WebP with high 92% quality.
+        """
         img = Image.open(io.BytesIO(image_bytes))
         img = img.convert("RGB")
-        img = img.resize((1280, 720), Image.Resampling.LANCZOS)
+        img = img.resize((3840, 2160), Image.Resampling.LANCZOS)
         
-        output_filename = f"{slug}-featured.webp"
+        output_filename = f"{slug}-featured-4k.webp"
         output_path = os.path.join(self.output_dir, output_filename)
         
-        img.save(output_path, "WEBP", quality=85, method=6)
+        # Save as 4K WebP with 92% high clarity compression
+        img.save(output_path, "WEBP", quality=92, method=6)
         filesize = os.path.getsize(output_path)
         
         return output_path, filesize
+
 
