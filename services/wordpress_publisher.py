@@ -192,37 +192,44 @@ class WordPressPublisher:
 
     def is_published_on_wp(self, title: str) -> bool:
         """
-        Queries WordPress REST API to check if a post with a similar title or topic is already published.
+        Queries WordPress REST API to check if a post with the EXACT SAME title or topic is already published.
+        Uses normalized title matching (strips spaces, punctuation, special chars) with strict 85%+ threshold.
         """
         try:
             import urllib.parse
             import html
+            import re
             from difflib import SequenceMatcher
 
             clean_title = title.strip().lower()
+            norm_target = re.sub(r'[^a-z0-9]', '', clean_title)
             search_query = urllib.parse.quote(clean_title[:30])
 
             res = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?search={search_query}&per_page=15", headers=self.headers, timeout=8)
             if res.status_code == 200:
                 posts = res.json()
                 for p in posts:
-                    wp_title = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
+                    wp_raw = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
+                    norm_wp = re.sub(r'[^a-z0-9]', '', wp_raw)
 
-                    ratio = SequenceMatcher(None, clean_title, wp_title).ratio()
-                    if ratio > 0.55:
+                    # Strict title match: Exact normalized title match or > 85% similarity
+                    ratio = SequenceMatcher(None, norm_target, norm_wp).ratio()
+                    if norm_target == norm_wp or ratio > 0.85:
                         return True
 
             res2 = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?per_page=25", headers=self.headers, timeout=8)
             if res2.status_code == 200:
                 posts2 = res2.json()
                 for p in posts2:
-                    wp_title = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
-                    ratio = SequenceMatcher(None, clean_title, wp_title).ratio()
-                    if ratio > 0.55:
+                    wp_raw = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
+                    norm_wp = re.sub(r'[^a-z0-9]', '', wp_raw)
+                    ratio = SequenceMatcher(None, norm_target, norm_wp).ratio()
+                    if norm_target == norm_wp or ratio > 0.85:
                         return True
 
         except Exception as e:
             MemoryDB.log_event("WARNING", "WP Duplicate Check", f"Failed WP live check: {e}")
         return False
+
 
 

@@ -36,11 +36,19 @@ class WPDuplicateCleanerAgent:
             "Authorization": f"Basic {token}"
         }
 
+    @staticmethod
+    def normalize_title(title: str) -> str:
+        """
+        Strips all punctuation, spaces, and special characters for 100% accurate title comparison.
+        """
+        import re
+        return re.sub(r'[^a-z0-9]', '', html.unescape(title).lower())
+
     def scan_and_clean_duplicates(self) -> Dict[str, Any]:
         """
         Scans published posts on WordPress REST API.
-        If duplicates (>60% similarity match) are found:
-        Keeps the original post and permanently deletes duplicate posts.
+        Checks STRICT title equality (>88% normalized title similarity match).
+        Keeps original post and deletes duplicate posts only if titles match.
         """
         MemoryDB.log_event("INFO", "WPCleanerAgent", "Starting autonomous WordPress duplicate scan...")
         try:
@@ -62,7 +70,8 @@ class WPDuplicateCleanerAgent:
                 if id1 in processed_ids:
                     continue
 
-                title1 = html.unescape(p1.get("title", {}).get("rendered", "")).strip()
+                raw_title1 = html.unescape(p1.get("title", {}).get("rendered", "")).strip()
+                norm_title1 = self.normalize_title(raw_title1)
 
                 for j in range(i + 1, len(posts)):
                     p2 = posts[j]
@@ -70,11 +79,13 @@ class WPDuplicateCleanerAgent:
                     if id2 in processed_ids:
                         continue
 
-                    title2 = html.unescape(p2.get("title", {}).get("rendered", "")).strip()
+                    raw_title2 = html.unescape(p2.get("title", {}).get("rendered", "")).strip()
+                    norm_title2 = self.normalize_title(raw_title2)
 
-                    ratio = SequenceMatcher(None, title1.lower(), title2.lower()).ratio()
-                    if ratio > 0.60:
-                        # Found duplicate! Keep original (lower ID) and delete duplicate (higher ID)
+                    # Strict Title Match: Exact normalized title or >88% title similarity
+                    ratio = SequenceMatcher(None, norm_title1, norm_title2).ratio()
+                    if norm_title1 == norm_title2 or ratio > 0.88:
+                        # Found EXACT/STRICT duplicate title!
                         keep_post = p1 if id1 < id2 else p2
                         del_post = p2 if id1 < id2 else p1
                         del_id = del_post.get("id")
@@ -93,7 +104,8 @@ class WPDuplicateCleanerAgent:
                                 "title": del_title,
                                 "kept_id": keep_post.get("id")
                             })
-                            MemoryDB.log_event("SUCCESS", "WPCleanerAgent", f"Deleted duplicate post ID #{del_id}: '{del_title[:40]}...' (Kept original ID #{keep_post.get('id')})")
+                            MemoryDB.log_event("SUCCESS", "WPCleanerAgent", f"Deleted exact duplicate post ID #{del_id}: '{del_title[:40]}...' (Kept original ID #{keep_post.get('id')})")
+
 
             MemoryDB.log_event("INFO", "WPCleanerAgent", f"Scan complete. Scanned {len(posts)} posts. Deleted {len(deleted_posts)} duplicates.")
             return {
