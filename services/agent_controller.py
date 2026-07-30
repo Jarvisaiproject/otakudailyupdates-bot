@@ -53,6 +53,8 @@ class AutonomousAgentController:
         else: # News Slots 1 to 5
             topic = self.news_fetcher.get_unseen_trending_topic(subtype=slot_info.get("subtype", "news"))
 
+        title = topic["title"]
+
         # Step 2: Live WordPress Site Duplicate Check
         if self.publisher.is_published_on_wp(title):
             MemoryDB.log_event("WARNING", slot_name, f"Topic '{title[:40]}...' is already published on live WordPress site. Aborting to prevent duplicate.")
@@ -61,6 +63,7 @@ class AutonomousAgentController:
                 "reason": "duplicate_on_wp",
                 "message": f"Topic '{title}' is already published on site."
             }
+
 
         # Step 3: SEO Strategy
         seo_meta = self.seo_strategist.analyze_and_plan(title, slot_type, topic.get("summary", ""))
