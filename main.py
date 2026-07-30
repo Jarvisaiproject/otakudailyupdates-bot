@@ -25,13 +25,35 @@ from services.scheduler_service import SchedulerService
 controller = AutonomousAgentController()
 scheduler_service = SchedulerService()
 
+def _keep_alive_pinger():
+    """
+    Background thread that periodically pings the server URL every 8 minutes
+    to prevent Render.com Free Web Services from going to sleep.
+    """
+    import time
+    import requests
+    server_url = os.getenv("RENDER_EXTERNAL_URL", "https://otakudailyupdates-bot.onrender.com")
+    time.sleep(30) # Initial delay
+    while True:
+        try:
+            res = requests.get(f"{server_url}/api/logs", timeout=10)
+            MemoryDB.log_event("INFO", "KeepAlive", f"Self keep-alive ping status: HTTP {res.status_code}")
+        except Exception as e:
+            pass
+        time.sleep(480) # Ping every 8 minutes (Render sleeps after 15m)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import threading
     scheduler_service.start()
+    pinger_thread = threading.Thread(target=_keep_alive_pinger, daemon=True)
+    pinger_thread.start()
+    MemoryDB.log_event("INFO", "Main", "Keep-Alive Pinger Thread started (8-min interval).")
     yield
     scheduler_service.stop()
 
 app = FastAPI(title="OtakuDailyUpdates Autonomous Blogging Agent", lifespan=lifespan)
+
 
 # Set up templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
