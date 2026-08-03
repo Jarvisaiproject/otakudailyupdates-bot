@@ -235,33 +235,49 @@ class WordPressPublisher:
 
             clean_title = title.strip().lower()
             norm_target = re.sub(r'[^a-z0-9]', '', clean_title)
+            target_eps = re.findall(r'episode\s*(\d+)', clean_title)
+            target_seasons = re.findall(r'season\s*(\d+)', clean_title)
+
             search_query = urllib.parse.quote(clean_title[:30])
+
+            def is_duplicate_match(wp_raw_title: str) -> bool:
+                wp_clean = wp_raw_title.strip().lower()
+                norm_wp = re.sub(r'[^a-z0-9]', '', wp_clean)
+                
+                # Check episode number mismatch
+                wp_eps = re.findall(r'episode\s*(\d+)', wp_clean)
+                if target_eps and wp_eps and target_eps != wp_eps:
+                    return False # Different episode numbers are NEVER duplicates!
+
+                # Check season number mismatch
+                wp_seasons = re.findall(r'season\s*(\d+)', wp_clean)
+                if target_seasons and wp_seasons and target_seasons != wp_seasons:
+                    return False # Different seasons are NEVER duplicates!
+
+                # Exact normalized title match or > 88% similarity
+                if norm_target == norm_wp:
+                    return True
+                ratio = SequenceMatcher(None, norm_target, norm_wp).ratio()
+                return ratio > 0.88
 
             res = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?search={search_query}&per_page=15", headers=self.headers, timeout=8)
             if res.status_code == 200:
-                posts = res.json()
-                for p in posts:
-                    wp_raw = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
-                    norm_wp = re.sub(r'[^a-z0-9]', '', wp_raw)
-
-                    # Strict title match: Exact normalized title match or > 85% similarity
-                    ratio = SequenceMatcher(None, norm_target, norm_wp).ratio()
-                    if norm_target == norm_wp or ratio > 0.85:
+                for p in res.json():
+                    wp_raw = html.unescape(p.get("title", {}).get("rendered", ""))
+                    if is_duplicate_match(wp_raw):
                         return True
 
-            res2 = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?per_page=25", headers=self.headers, timeout=8)
+            res2 = requests.get(f"{self.wp_url}/wp-json/wp/v2/posts?per_page=30", headers=self.headers, timeout=8)
             if res2.status_code == 200:
-                posts2 = res2.json()
-                for p in posts2:
-                    wp_raw = html.unescape(p.get("title", {}).get("rendered", "")).strip().lower()
-                    norm_wp = re.sub(r'[^a-z0-9]', '', wp_raw)
-                    ratio = SequenceMatcher(None, norm_target, norm_wp).ratio()
-                    if norm_target == norm_wp or ratio > 0.85:
+                for p in res2.json():
+                    wp_raw = html.unescape(p.get("title", {}).get("rendered", ""))
+                    if is_duplicate_match(wp_raw):
                         return True
 
         except Exception as e:
             MemoryDB.log_event("WARNING", "WP Duplicate Check", f"Failed WP live check: {e}")
         return False
+
 
 
 
