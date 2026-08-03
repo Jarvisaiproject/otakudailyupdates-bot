@@ -156,3 +156,45 @@ class EpisodeTracker:
             rating=rating
         )
 
+    def generate_episode_nav_widget(self, anime_name: str, season: int, current_ep: int, total_eps: int) -> str:
+        """
+        Generates responsive HTML Episode Navigation Bar (<prev | Episode Select Dropdown | next>)
+        to be appended at the bottom of episode review posts.
+        """
+        ep_records = MemoryDB.get_anime_episodes_list(anime_name, season)
+        url_map = {r["episode_number"]: r.get("review_url", f"{config.WP_URL}/") for r in ep_records}
+
+        prev_ep = current_ep - 1 if current_ep > 1 else None
+        next_ep = current_ep + 1 if current_ep < total_eps else None
+
+        prev_url = url_map.get(prev_ep, "#") if prev_ep else "#"
+        next_url = url_map.get(next_ep, "#") if next_ep else "#"
+
+        prev_btn = f'<a href="{prev_url}" style="padding:0.5rem 1rem; background:#1e293b; color:#38bdf8; text-decoration:none; border-radius:0.375rem; font-weight:700; font-size:0.9rem; border:1px solid #334155;">&lt; Prev Ep {prev_ep}</a>' if prev_ep else '<span style="padding:0.5rem 1rem; background:rgba(255,255,255,0.05); color:#64748b; border-radius:0.375rem; font-weight:600; font-size:0.9rem;">&lt; Prev</span>'
+
+        next_btn = f'<a href="{next_url}" style="padding:0.5rem 1rem; background:#1e293b; color:#38bdf8; text-decoration:none; border-radius:0.375rem; font-weight:700; font-size:0.9rem; border:1px solid #334155;">Next Ep {next_ep} &gt;</a>' if next_ep else '<span style="padding:0.5rem 1rem; background:rgba(255,255,255,0.05); color:#64748b; border-radius:0.375rem; font-weight:600; font-size:0.9rem;">Next &gt;</span>'
+
+        options_html = []
+        for ep in range(1, total_eps + 1):
+            ep_url = url_map.get(ep, "#")
+            selected = 'selected' if ep == current_ep else ''
+            options_html.append(f'<option value="{ep_url}" {selected}>Episode {ep} Review</option>')
+
+        dropdown_html = f'''
+        <select onchange="if(this.value && this.value!=\'#\') window.location.href=this.value;" style="padding:0.55rem 1rem; background:#1e293b; color:#f8fafc; border:1px solid #475569; border-radius:0.375rem; font-weight:700; font-size:0.9rem; cursor:pointer;">
+            {''.join(options_html)}
+        </select>
+        '''
+
+        return f'''
+        <div style="margin: 2.5rem 0 1.5rem 0; padding: 1.25rem; background: #0f172a; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
+            <div style="font-weight: 700; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">📺 {anime_name} Season {season} — Episode Navigation</div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                {prev_btn}
+                {dropdown_html}
+                {next_btn}
+            </div>
+        </div>
+        '''
+
+

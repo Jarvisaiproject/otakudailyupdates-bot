@@ -714,9 +714,9 @@
                         grid.innerHTML = data.folders.map(f => {
                             const pct = Math.round((f.published_count / f.total_episodes) * 100);
                             const nextText = f.next_due_episode 
-                                ? `<span style="color: #fbbf24; font-weight:700;">⚡ Next Scheduled: S${f.season} Ep ${f.next_due_episode}</span>` 
                                 ? `<span style="color: #fbbf24; font-weight:700;">⚡ Next Scheduled: S${f.season} Ep ${f.next_due_episode}</span>`
                                 : `<span style="color: #34d399; font-weight:700;">🏁 All Released Episodes Caught Up!</span>`;
+
 
                             const epListHtml = f.episodes.length > 0 
                                 ? f.episodes.map(e => `<div style="font-size:0.8rem; margin-top:0.3rem;"><a href="${e.url}" target="_blank" style="color:#38bdf8; text-decoration:none;">📄 Ep ${e.episode} Review ↗</a></div>`).join('')

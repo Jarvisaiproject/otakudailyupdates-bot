@@ -81,12 +81,22 @@ class AutonomousAgentController:
         # Step 3: Write Article Content
         written = self.writer.generate_article(topic, seo_meta, slot_info)
 
-        # Step 4: Internal Link Injection
+        # Step 4: Internal Link Injection & Episode Navigation Widget
         linked = self.internal_linker.inject_internal_links(written["content"], seo_meta["slug"])
         final_content = linked["content"]
         links_added = linked["links_added"]
 
+        if slot_type == "episode_review" and not topic.get("is_fallback"):
+            nav_widget = self.episode_tracker.generate_episode_nav_widget(
+                anime_name=topic.get("anime_name", "Anime"),
+                season=topic.get("season_number", 1),
+                current_ep=topic.get("episode_number", 1),
+                total_eps=12
+            )
+            final_content += "\n\n" + nav_widget
+
         # Step 5: Featured Image Generation & Pillow WebP Compression
+
         media_meta = self.media_gen.generate_and_optimize_featured_image(title, seo_meta["slug"], slot_type)
 
         # Step 6: WordPress REST API Publishing with Retries
