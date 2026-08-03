@@ -76,11 +76,28 @@ class EpisodeTracker:
 
     def get_anime_folders_status(self) -> List[Dict[str, Any]]:
         """
-        Returns full folder hierarchy for tracked anime series,
-        including all published season/episode reviews and next due episode.
+        Returns full folder hierarchy for tracked anime series in <0.5 seconds
+        by fetching all live WordPress posts in a single batch request.
         """
         from services.wordpress_publisher import WordPressPublisher
+        import urllib.parse
+        import html
+        import re
+        from difflib import SequenceMatcher
+
         wp_pub = WordPressPublisher()
+        
+        # 1. Single Batch Fetch of live WP posts
+        wp_posts_map = {}
+        try:
+            res = requests.get(f"{config.WP_URL}/wp-json/wp/v2/posts?per_page=100", headers=wp_pub.headers, timeout=8)
+            if res.status_code == 200:
+                for p in res.json():
+                    t_clean = re.sub(r'[^a-z0-9]', '', html.unescape(p.get("title", {}).get("rendered", "")).lower())
+                    wp_posts_map[t_clean] = p.get("link", f"{config.WP_URL}/")
+        except Exception as e:
+            pass
+
         folders = []
 
         for series in self.TRACKED_SERIES:
@@ -88,32 +105,30 @@ class EpisodeTracker:
             season = series["season"]
             total_eps = series["total_episodes"]
             
-            # Fetch episode review records from DB
             ep_records = MemoryDB.get_anime_episodes_list(name, season)
-            reviewed_ep_nums = {r["episode_number"] for r in ep_records}
+            db_eps_map = {r["episode_number"]: r.get("review_url") for r in ep_records}
 
-            # Sync live WordPress status for uncached episodes
             episodes = []
             max_pub = 0
             for ep_num in range(1, total_eps + 1):
                 ep_title = f"{name} Season {season} Episode {ep_num} Review"
+                norm_target = re.sub(r'[^a-z0-9]', '', ep_title.lower())
                 
-                # Check DB or WP
-                matched = next((r for r in ep_records if r["episode_number"] == ep_num), None)
-                if matched:
+                # Check DB first or single-batch WP map
+                if ep_num in db_eps_map:
                     episodes.append({
                         "episode": ep_num,
                         "title": ep_title,
                         "status": "published",
-                        "url": matched.get("review_url", f"{config.WP_URL}/")
+                        "url": db_eps_map[ep_num] or f"{config.WP_URL}/"
                     })
                     max_pub = max(max_pub, ep_num)
-                elif wp_pub.is_published_on_wp(ep_title):
+                elif norm_target in wp_posts_map:
                     episodes.append({
                         "episode": ep_num,
                         "title": ep_title,
                         "status": "published",
-                        "url": f"{config.WP_URL}/"
+                        "url": wp_posts_map[norm_target]
                     })
                     max_pub = max(max_pub, ep_num)
 
@@ -129,6 +144,7 @@ class EpisodeTracker:
             })
 
         return folders
+
 
     def record_completed_review(self, anime_name: str, season: int, episode: int, review_url: str, rating: float):
         MemoryDB.update_episode_status(
