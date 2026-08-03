@@ -32,14 +32,23 @@ class SEOStrategist:
             f"{primary_keyword} official trailer"
         ]
 
-        # Category determination strictly mapped to user's 3 primary categories: NEWS, REVIEWS, THEORY
-        if slot_type in ["news", "spotlight"]:
+        # Category determination strictly mapped to WordPress categories:
+        # NEWS, EPISODE REVIEW, ANIME REVIEW, Otaku Spotlight, THEORY, REVIEWS
+        if slot_type == "news":
             category = "NEWS"
             tags = ["Anime News", "Breaking News", "Otaku Updates", "Anime Announcements", primary_keyword]
             schema_type = "NewsArticle"
+        elif slot_type == "spotlight":
+            category = "Otaku Spotlight"
+            tags = ["Otaku Spotlight", "Anime Spotlight", "Underrated Anime", "Manga Feature", primary_keyword]
+            schema_type = "Article"
         elif slot_type == "episode_review":
-            category = "REVIEWS"
-            tags = ["Episode Review", "Anime Review", "Spoilers", "Season Review", primary_keyword]
+            category = "EPISODE REVIEW"
+            tags = ["Episode Review", "Anime Review", "Episode Recap", "Season Review", primary_keyword]
+            schema_type = "Review"
+        elif slot_type == "anime_review":
+            category = "ANIME REVIEW"
+            tags = ["Anime Review", "Full Review", "Series Review", "Anime Breakdown", primary_keyword]
             schema_type = "Review"
         elif slot_type == "theory":
             category = "THEORY"
@@ -49,6 +58,7 @@ class SEOStrategist:
             category = "NEWS"
             tags = ["Anime", "Manga", "Japanese Pop Culture", "Otaku Feature", primary_keyword]
             schema_type = "Article"
+
 
         meta_title = f"{title} | {config.SITE_NAME}"
         if len(meta_title) > 60:

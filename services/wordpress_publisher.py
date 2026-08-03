@@ -50,7 +50,7 @@ class WordPressPublisher:
                 media_id = self._upload_media(media_meta)
                 
                 # Step 2: Resolve Category & Tags
-                category_id = self._get_or_create_category(seo_meta.get("category", "Uncategorized"))
+                cat_ids = self._get_category_ids(seo_meta.get("category", "NEWS"))
                 tag_ids = self._get_or_create_tags(seo_meta.get("tags", []))
 
                 # Step 3: Create Post Payload
@@ -60,7 +60,7 @@ class WordPressPublisher:
                     "content": article["content"],
                     "excerpt": seo_meta["meta_description"],
                     "status": "publish",
-                    "categories": [category_id] if category_id else [],
+                    "categories": cat_ids,
                     "tags": tag_ids,
                     "meta": {
                         "_yoast_wpseo_title": seo_meta["meta_title"],
@@ -69,6 +69,7 @@ class WordPressPublisher:
                         "rank_math_description": seo_meta["meta_description"]
                     }
                 }
+
                 
                 if media_id:
                     post_payload["featured_media"] = media_id
@@ -150,27 +151,58 @@ class WordPressPublisher:
             MemoryDB.log_event("WARNING", "WP Media", f"Media upload failed: {str(e)}")
         return None
 
-    def _get_or_create_category(self, cat_name: str) -> Optional[int]:
+    def _get_category_ids(self, cat_name: str) -> List[int]:
+        """
+        Dynamically maps post categories to WordPress Category IDs.
+        Attaches both sub-category ID (EPISODE REVIEW / ANIME REVIEW) and parent category ID (REVIEWS).
+        """
         try:
             res = requests.get(f"{self.wp_url}/wp-json/wp/v2/categories?per_page=100", headers=self.headers, timeout=10)
             if res.status_code == 200:
                 cats = res.json()
-                # Exact name match (case-insensitive)
+                cat_name_clean = cat_name.strip().upper()
+                cat_slug = cat_name.strip().lower().replace(' ', '-')
+                
+                primary_id = None
+                parent_id = None
+
+                # Exact name or slug match
                 for c in cats:
-                    if c["name"].strip().upper() == cat_name.strip().upper():
-                        return c["id"]
-                # Partial/Slug match
-                for c in cats:
-                    if cat_name.lower() in c["name"].lower() or cat_name.lower() in c["slug"].lower():
-                        return c["id"]
-            
-            # Create new category if not found
-            create_res = requests.post(f"{self.wp_url}/wp-json/wp/v2/categories", json={"name": cat_name.upper()}, headers=self.headers, timeout=10)
-            if create_res.status_code in [200, 201]:
-                return create_res.json()["id"]
-        except Exception:
-            pass
-        return None
+                    c_name = c["name"].strip().upper()
+                    c_slug = c["slug"].strip().lower()
+                    if c_name == cat_name_clean or c_slug == cat_slug:
+                        primary_id = c["id"]
+                        parent_id = c.get("parent")
+                        break
+
+                # Partial match fallback
+                if not primary_id:
+                    for c in cats:
+                        if cat_slug in c["slug"].lower() or c["name"].strip().upper() in cat_name_clean:
+                            primary_id = c["id"]
+                            parent_id = c.get("parent")
+                            break
+
+                ids = []
+                if primary_id:
+                    ids.append(primary_id)
+                if parent_id and parent_id != 0 and parent_id not in ids:
+                    ids.append(parent_id)
+
+                # If reviewing an episode or full anime, automatically attach parent REVIEWS category (ID 122)
+                if "REVIEW" in cat_name_clean:
+                    for c in cats:
+                        if c["name"].strip().upper() == "REVIEWS" and c["id"] not in ids:
+                            ids.append(c["id"])
+
+                if ids:
+                    return ids
+
+        except Exception as e:
+            MemoryDB.log_event("WARNING", "WP Categories", f"Category resolution failed: {e}")
+        
+        return [2] # Fallback to NEWS category ID 2 if unmapped
+
 
     def _get_or_create_tags(self, tags: List[str]) -> List[int]:
         tag_ids = []
