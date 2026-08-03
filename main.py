@@ -115,6 +115,20 @@ def get_wp_history():
         return {"status": "error", "message": str(e), "posts": []}
     return {"status": "error", "posts": []}
 
+@app.get("/api/anime-folders")
+def get_anime_folders():
+    """
+    Returns folder hierarchy for currently airing tracked anime series.
+    """
+    try:
+        from services.episode_tracker import EpisodeTracker
+        tracker = EpisodeTracker()
+        folders = tracker.get_anime_folders_status()
+        return {"status": "success", "folders": folders}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "folders": []}
+
+
 @app.post("/api/run-slot")
 def trigger_slot_api(req: SlotTriggerRequest):
     try:

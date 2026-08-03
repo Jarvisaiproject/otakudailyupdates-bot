@@ -182,6 +182,19 @@ class MemoryDB:
             return row["max_ep"] if row and row["max_ep"] is not None else 0
 
     @staticmethod
+    def get_anime_episodes_list(anime_name: str, season: int = 1) -> List[Dict[str, Any]]:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM episode_tracker 
+                WHERE anime_name = ? AND season_number = ? AND review_status = 'published'
+                ORDER BY episode_number ASC
+            """, (anime_name, season))
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+    @staticmethod
     def is_news_processed(news_hash: str) -> bool:
         with get_connection() as conn:
             cursor = conn.cursor()

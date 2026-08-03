@@ -515,6 +515,19 @@
             </table>
         </div>
 
+        <!-- Currently Airing Anime Series Folders (Episode Tracker) -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <div class="card-title">📁 Currently Airing Anime Series Folders (Episode Progression Engine)</div>
+                <button class="btn" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);" onclick="loadAnimeFolders()">🔄 Refresh Anime Folders</button>
+            </div>
+            <div id="anime-folders-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+                <div style="text-align: center; color: var(--text-muted); padding: 1.5rem; grid-column: span 3;">
+                    Loading anime series folders...
+                </div>
+            </div>
+        </div>
+
         <!-- Live WordPress Published History Card -->
         <div class="card" style="margin-bottom: 2rem;">
             <div class="card-header">
@@ -540,6 +553,7 @@
                 </tbody>
             </table>
         </div>
+
 
         <!-- Live Terminal Logs -->
         <div class="card">
@@ -691,8 +705,60 @@
                 });
         }
 
-        // Initial load of WP History
+        function loadAnimeFolders() {
+            const grid = document.getElementById('anime-folders-grid');
+            fetch('/api/anime-folders')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.folders && data.folders.length > 0) {
+                        grid.innerHTML = data.folders.map(f => {
+                            const pct = Math.round((f.published_count / f.total_episodes) * 100);
+                            const nextText = f.next_due_episode 
+                                ? `<span style="color: #fbbf24; font-weight:700;">⚡ Next Scheduled: S${f.season} Ep ${f.next_due_episode}</span>` 
+                                ? `<span style="color: #fbbf24; font-weight:700;">⚡ Next Scheduled: S${f.season} Ep ${f.next_due_episode}</span>`
+                                : `<span style="color: #34d399; font-weight:700;">🏁 All Released Episodes Caught Up!</span>`;
+
+                            const epListHtml = f.episodes.length > 0 
+                                ? f.episodes.map(e => `<div style="font-size:0.8rem; margin-top:0.3rem;"><a href="${e.url}" target="_blank" style="color:#38bdf8; text-decoration:none;">📄 Ep ${e.episode} Review ↗</a></div>`).join('')
+                                : '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">No episodes published yet</div>';
+
+                            return `
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 0.75rem; padding: 1.25rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <h3 style="font-size: 1.05rem; font-weight: 700; color: #f8fafc;">📁 ${f.anime_name}</h3>
+                                        <span style="background: rgba(139, 92, 246, 0.2); color: #a78bfa; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;">Season ${f.season}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                                        Progress: <strong>${f.published_count} / ${f.total_episodes} Episodes</strong>
+                                        <div style="background: rgba(255,255,255,0.1); border-radius: 999px; height: 6px; margin-top: 0.4rem; overflow: hidden;">
+                                            <div style="background: linear-gradient(90deg, #e11d48, #8b5cf6); width: ${pct}%; height: 100%;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                                        ${nextText}
+                                    </div>
+                                    <details style="margin-top: 0.5rem; cursor: pointer;">
+                                        <summary style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">View Folder Files (${f.episodes.length})</summary>
+                                        <div style="padding-top: 0.5rem;">
+                                            ${epListHtml}
+                                        </div>
+                                    </details>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        grid.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1.5rem; grid-column: span 3;">No anime folders configured.</div>';
+                    }
+                })
+                .catch(err => {
+                    grid.innerHTML = `<div style="text-align: center; color: var(--error); padding: 1.5rem; grid-column: span 3;">Error loading anime folders: ${err}</div>`;
+                });
+        }
+
+        // Initial loads
         loadWPHistory();
+        loadAnimeFolders();
+
 
         // Auto-refresh logs every 10 seconds
         setInterval(() => {

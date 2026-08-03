@@ -74,6 +74,62 @@ class EpisodeTracker:
         }
 
 
+    def get_anime_folders_status(self) -> List[Dict[str, Any]]:
+        """
+        Returns full folder hierarchy for tracked anime series,
+        including all published season/episode reviews and next due episode.
+        """
+        from services.wordpress_publisher import WordPressPublisher
+        wp_pub = WordPressPublisher()
+        folders = []
+
+        for series in self.TRACKED_SERIES:
+            name = series["name"]
+            season = series["season"]
+            total_eps = series["total_episodes"]
+            
+            # Fetch episode review records from DB
+            ep_records = MemoryDB.get_anime_episodes_list(name, season)
+            reviewed_ep_nums = {r["episode_number"] for r in ep_records}
+
+            # Sync live WordPress status for uncached episodes
+            episodes = []
+            max_pub = 0
+            for ep_num in range(1, total_eps + 1):
+                ep_title = f"{name} Season {season} Episode {ep_num} Review"
+                
+                # Check DB or WP
+                matched = next((r for r in ep_records if r["episode_number"] == ep_num), None)
+                if matched:
+                    episodes.append({
+                        "episode": ep_num,
+                        "title": ep_title,
+                        "status": "published",
+                        "url": matched.get("review_url", f"{config.WP_URL}/")
+                    })
+                    max_pub = max(max_pub, ep_num)
+                elif wp_pub.is_published_on_wp(ep_title):
+                    episodes.append({
+                        "episode": ep_num,
+                        "title": ep_title,
+                        "status": "published",
+                        "url": f"{config.WP_URL}/"
+                    })
+                    max_pub = max(max_pub, ep_num)
+
+            folders.append({
+                "anime_name": name,
+                "season": season,
+                "total_episodes": total_eps,
+                "published_count": len(episodes),
+                "latest_episode": max_pub,
+                "next_due_episode": max_pub + 1 if max_pub < total_eps else None,
+                "episodes": episodes,
+                "is_active": max_pub < total_eps
+            })
+
+        return folders
+
     def record_completed_review(self, anime_name: str, season: int, episode: int, review_url: str, rating: float):
         MemoryDB.update_episode_status(
             anime_name=anime_name,
@@ -83,3 +139,4 @@ class EpisodeTracker:
             review_url=review_url,
             rating=rating
         )
+
