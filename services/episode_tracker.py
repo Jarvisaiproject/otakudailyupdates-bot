@@ -113,22 +113,24 @@ class EpisodeTracker:
             for ep_num in range(1, total_eps + 1):
                 ep_title = f"{name} Season {season} Episode {ep_num} Review"
                 norm_target = re.sub(r'[^a-z0-9]', '', ep_title.lower())
+                name_clean = re.sub(r'[^a-z0-9]', '', name.lower())
                 
-                # Check DB first or single-batch WP map
+                matched_link = None
                 if ep_num in db_eps_map:
+                    matched_link = db_eps_map[ep_num]
+                else:
+                    # Check exact or flexible match in WP posts map
+                    for k, link in wp_posts_map.items():
+                        if norm_target in k or (name_clean in k and f"episode{ep_num}" in k):
+                            matched_link = link
+                            break
+
+                if matched_link:
                     episodes.append({
                         "episode": ep_num,
                         "title": ep_title,
                         "status": "published",
-                        "url": db_eps_map[ep_num] or f"{config.WP_URL}/"
-                    })
-                    max_pub = max(max_pub, ep_num)
-                elif norm_target in wp_posts_map:
-                    episodes.append({
-                        "episode": ep_num,
-                        "title": ep_title,
-                        "status": "published",
-                        "url": wp_posts_map[norm_target]
+                        "url": matched_link if (matched_link and matched_link.startswith("http")) else f"{config.WP_URL}/"
                     })
                     max_pub = max(max_pub, ep_num)
 
@@ -142,6 +144,7 @@ class EpisodeTracker:
                 "episodes": episodes,
                 "is_active": max_pub < total_eps
             })
+
 
         return folders
 
