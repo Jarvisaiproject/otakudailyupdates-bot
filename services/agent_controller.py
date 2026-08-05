@@ -26,7 +26,13 @@ class AutonomousAgentController:
         self.publisher = WordPressPublisher()
         self.social_publisher = SocialPublisher()
 
-    def run_slot_cycle(self, time_key: str) -> Dict[str, Any]:
+    def run_slot_cycle(self, time_key: str = "auto") -> Dict[str, Any]:
+        if time_key in ["auto", "", None] or time_key not in config.SLOTS:
+            now_str = datetime.now().strftime("%H:%M")
+            # Find closest slot by time
+            time_keys = list(config.SLOTS.keys())
+            time_key = min(time_keys, key=lambda k: abs((datetime.strptime(k, "%H:%M") - datetime.strptime(now_str, "%H:%M")).total_seconds()))
+
         slot_info = config.SLOTS.get(time_key, {"name": f"Slot {time_key}", "type": "news", "subtype": "general"})
         slot_name = slot_info["name"]
         slot_type = slot_info["type"]
@@ -37,9 +43,23 @@ class AutonomousAgentController:
         if slot_type == "episode_review":
             topic = self.episode_tracker.get_next_episode_for_review()
         elif slot_type == "theory":
+            import random
+            theories = [
+                {"title": "Jujutsu Kaisen Season 3 Theory: Sukuna's True Binding Vow & The Secret Culling Game Origin", "summary": "Deep dive into manga lore and creator statements regarding Sukuna's origin and ancient Jujutsu history."},
+                {"title": "Solo Leveling Season 2 Theory: Sung Jin-Woo's Monarch Power Origin & The Secret Shadow Realm", "summary": "Comprehensive analysis of Shadow Monarch lore and upcoming Monarch battles in Season 2."},
+                {"title": "One Piece Elbaf Theory: Shank's Secret Family Lineage & The True Purpose of the Sun God Nika", "summary": "Lore analysis on Shank's connection to Figarland family and Elbaf's ancient prophecy."},
+                {"title": "Demon Slayer Theory: Yoriichi's Sun Breathing Origin & The Secret Weakness of Muzan Kibutsuji", "summary": "Detailed breakdown of Sun Breathing lineage and Muzan's cellular fear of Yoriichi."},
+                {"title": "Chainsaw Man Season 2 Theory: The Reze Arc Secret & The Four Horsemen Devil Hierarchy", "summary": "In-depth breakdown of Bomb Devil lore and Makima's ultimate horsemen endgame."}
+            ]
+            chosen = random.choice(theories)
+            # Ensure not already published on WP
+            for th in theories:
+                if not self.publisher.is_published_on_wp(th["title"]):
+                    chosen = th
+                    break
             topic = {
-                "title": "Jujutsu Kaisen Season 3 Theory: Sukuna's True Binding Vow & The Secret Culling Game Origin",
-                "summary": "Deep dive into manga lore and creator statements regarding Sukuna's origin and ancient Jujutsu history.",
+                "title": chosen["title"],
+                "summary": chosen["summary"],
                 "source": "Otaku Theory Engine",
                 "url": "https://otakudailyupdates.com/theory"
             }
@@ -50,8 +70,9 @@ class AutonomousAgentController:
                 "source": "Manga Spotlight",
                 "url": "https://otakudailyupdates.com/spotlight"
             }
-        else: # News Slots 1 to 5
+        else: # News Slots
             topic = self.news_fetcher.get_unseen_trending_topic(subtype=slot_info.get("subtype", "news"))
+
 
         title = topic["title"]
 

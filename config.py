@@ -23,17 +23,25 @@ class Config:
     SITE_NAME = os.getenv("SITE_NAME", "Otaku Daily Updates")
     NICHE = os.getenv("NICHE", "Anime, Manga, Movies, Light Novels, Games, Japanese Pop Culture")
     
-    # 8 Daily Slots and their respective content types
+    # 15 Daily Automated Slots (10 News, 3 Episode Reviews, 1 Theory, 1 Spotlight)
     SLOTS = {
-        "08:00": {"name": "Anime News #1", "type": "news", "subtype": "breaking"},
-        "10:00": {"name": "Anime News #2", "type": "news", "subtype": "trending"},
-        "12:00": {"name": "Anime News #3", "type": "news", "subtype": "collaborations_events"},
-        "14:00": {"name": "Anime News #4", "type": "news", "subtype": "international_games"},
-        "16:00": {"name": "Anime News #5", "type": "news", "subtype": "major_updates"},
-        "18:00": {"name": "Episode Review", "type": "episode_review", "subtype": "airing_review"},
-        "20:00": {"name": "Anime Theory", "type": "theory", "subtype": "lore_analysis"},
-        "22:00": {"name": "Otaku Spotlight", "type": "spotlight", "subtype": "manga_novel_games"},
+        "01:00": {"name": "Anime News #1", "type": "news", "subtype": "breaking"},
+        "03:00": {"name": "Anime News #2", "type": "news", "subtype": "trending"},
+        "05:00": {"name": "Anime News #3", "type": "news", "subtype": "release_dates"},
+        "07:00": {"name": "Episode Review #1", "type": "episode_review", "subtype": "airing_review"},
+        "08:30": {"name": "Anime News #4", "type": "news", "subtype": "announcements"},
+        "10:00": {"name": "Anime Theory", "type": "theory", "subtype": "lore_analysis"},
+        "11:30": {"name": "Anime News #5", "type": "news", "subtype": "voice_cast_staff"},
+        "13:00": {"name": "Episode Review #2", "type": "episode_review", "subtype": "airing_review"},
+        "14:30": {"name": "Anime News #6", "type": "news", "subtype": "studio_production"},
+        "16:00": {"name": "Otaku Spotlight", "type": "spotlight", "subtype": "manga_novel_games"},
+        "17:30": {"name": "Anime News #7", "type": "news", "subtype": "trailers_visuals"},
+        "19:00": {"name": "Episode Review #3", "type": "episode_review", "subtype": "airing_review"},
+        "20:30": {"name": "Anime News #8", "type": "news", "subtype": "box_office_ranking"},
+        "22:00": {"name": "Anime News #9", "type": "news", "subtype": "licensing_manga"},
+        "23:30": {"name": "Anime News #10", "type": "news", "subtype": "late_night_roundup"},
     }
+
     
     # Trusted RSS Sources for Anime News Aggregation
     TRUSTED_RSS_SOURCES = [

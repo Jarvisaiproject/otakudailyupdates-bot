@@ -53,7 +53,8 @@ class SchedulerService:
             self.setup_schedule()
             self.scheduler.start()
             self.is_running = True
-            MemoryDB.log_event("INFO", "Scheduler", "APScheduler started successfully for 8 daily slots + 2-hour WP Cleaner.")
+            MemoryDB.log_event("INFO", "Scheduler", "APScheduler started successfully for 15 daily slots + 2-hour WP Cleaner.")
+
 
     def stop(self):
         if self.is_running:

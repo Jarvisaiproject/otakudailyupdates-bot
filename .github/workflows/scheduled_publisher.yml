@@ -2,8 +2,8 @@ name: 24/7 Autonomous Anime Blogging Agent Trigger
 
 on:
   schedule:
-    # Runs every 2 hours automatically
-    - cron: '0 */2 * * *'
+    # Runs every 1 hour automatically for 15 daily posts
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,5 +16,6 @@ jobs:
         echo "Waking up Render Web Service and triggering publishing cycle..."
         curl -X POST https://otakudailyupdates-bot.onrender.com/api/run-slot \
              -H "Content-Type: application/json" \
-             -d '{"slot_key":"08:00"}'
+             -d '{"slot_key":"auto"}'
+
 
