@@ -371,12 +371,12 @@
             <!-- 8 Daily Slots Overview -->
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
-                    <div class="card-title">📅 8 Daily Publishing Slots Schedule</div>
+                    <div class="card-title">📅 15 Daily Publishing Slots Schedule</div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn" style="background: linear-gradient(135deg, #059669, #10b981);" onclick="triggerRunCleaner()">🧹 Clean Duplicates Now</button>
-                        <button class="btn" onclick="triggerRunSlot('08:00')">Run Slot Now</button>
+                        <button class="btn" onclick="triggerRunSlot('auto')">Run Nearest Slot Now</button>
                     </div>
                 </div>
+
 
                 <div class="slots-grid">
                     <div class="slot-pill" onclick="triggerRunSlot('01:00')"><div class="slot-time">01:00 AM</div><div class="slot-name">Anime News #1</div></div>

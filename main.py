@@ -139,13 +139,8 @@ def trigger_slot_api(req: SlotTriggerRequest):
 
 @app.post("/api/run-cleaner")
 def trigger_cleaner_api():
-    try:
-        from services.wp_cleaner_agent import WPDuplicateCleanerAgent
-        cleaner = WPDuplicateCleanerAgent()
-        res = cleaner.scan_and_clean_duplicates()
-        return JSONResponse(content=res if isinstance(res, dict) else {"status": "success", "data": str(res)})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+    return JSONResponse(content={"status": "disabled", "message": "WP Duplicate Cleaner Agent has been permanently disabled to prevent post deletion."})
+
 
 
 
